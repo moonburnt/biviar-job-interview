@@ -16,11 +16,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-party
-
+    "rest_framework",
     # Local
-    "accounts"
+    "accounts",
+    "api",
 ]
 
 MIDDLEWARE = [
@@ -83,4 +83,4 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Using custom user model coz default does not have required fields
 # TODO: comments
-AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = "accounts.User"

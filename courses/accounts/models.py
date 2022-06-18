@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
 class User(AbstractUser):
     STAFF = 1
     STUDENT = 2
@@ -13,6 +14,6 @@ class User(AbstractUser):
     )
 
     usertype = models.PositiveSmallIntegerField(
-        choices = USERTYPE_CHOICES,
-        default = STUDENT,
+        choices=USERTYPE_CHOICES,
+        default=STUDENT,
     )
