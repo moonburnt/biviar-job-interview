@@ -82,5 +82,4 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Using custom user model coz default does not have required fields
-# TODO: comments
 AUTH_USER_MODEL = "accounts.User"
