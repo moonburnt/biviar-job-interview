@@ -2,8 +2,9 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# TODO: fetch this from envars, maybe store in .env
 SECRET_KEY = "django-insecure-6@92hmgg4q41#g-(=osfaf&q=(6#odtkszv^x3f$o2x-a5##3e"
-
+# TODO: disable debug for release
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -20,6 +21,7 @@ INSTALLED_APPS = [
     "rest_framework",
     # Local
     "accounts",
+    "exercises",
     "api",
 ]
 
