@@ -1,4 +1,50 @@
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+
+class HomeworkSolution(models.Model):
+    author = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.RESTRICT,
+        related_name="homework_solutions",
+    )
+
+    homework = models.ForeignKey(
+        "exercises.Homework",
+        on_delete=models.CASCADE,
+        related_name="homework_solutions",
+    )
+
+    # For now, solution can only be text
+    solution = models.TextField(
+        max_length=1000,
+    )
+
+    rating = models.IntegerField(
+        # This is hardcoded to work with 5-tier rating systems.
+        # Will need adjustments if this is planned to be used in location with
+        # rating systems other than 1-5
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+
+
+class Comment(models.Model):
+    author = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+
+    # homework, this comment is attached to
+    homework = models.ForeignKey(
+        "exercises.Homework",
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+
+    text = models.TextField(
+        max_length=1000,
+    )
 
 
 class Lection(models.Model):
@@ -10,9 +56,9 @@ class Lection(models.Model):
         # Using string names instead of model's class coz one app may reference
         # to models from other app and this would be better for that
         "accounts.User",
-        # null=True,
-        # on_delete=models.SET_NULL,
         on_delete=models.CASCADE,
+        # I think this will do?
+        related_name="lections",
     )
 
     # TODO:
@@ -36,14 +82,10 @@ class Homework(models.Model):
     # be attached to one lection.
     lection = models.OneToOneField(
         "exercises.Lection",
-        # null=True,
-        # on_delete=models.SET_NULL,
         on_delete=models.CASCADE,
         # This will create backwards reference to homework from Lection
         related_name="homework",
     )
-
-    # TODO: many-to-many to students with additional fields
 
 
 class Course(models.Model):
@@ -53,10 +95,7 @@ class Course(models.Model):
     # Master of course, can't be removed by other lectors
     author = models.ForeignKey(
         "accounts.User",
-        # null=True,
-        # on_delete=models.SET_NULL,
         on_delete=models.CASCADE,
-        # I don't think we need related_name there, for now. TODO
         related_name="author_courses",
     )
 
