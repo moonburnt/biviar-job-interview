@@ -282,34 +282,15 @@ class HomeworkSolutionsView(generics.ListAPIView):
         raise ValueError("Access Denied")
 
 
-class SolutionRatingView(generics.CreateAPIView):
-    serializer_class = serializers.HomeworkSolutionsSerializer
+class RateHomeworkSolutionView(generics.CreateAPIView):
+    serializer_class = serializers.RateHomeworkSolutionSerializer
     permission_classes = (IsAuthenticated,)
 
-    def get_queryset(self):
-        lection_id = self.kwargs["lection_id"]
-        student_id = self.kwargs["student_id"]
-        user = self.request.user
-
-        homework = Homework.objects.get(lection=lection_id)
-
-        solution = homework.homework_solutions.get(author=student_id)
-
-        rating = solution.rating
-
-        # idk if this is corrent format
-        if user.usertype == User.STUDENT:
-            if student_id == user.id:
-                return rating
-
-        elif user.usertype == User.LECTOR:
-            if user == homework.lection.get("author"):
-                return rating
-
-        elif user.usertype == User.STAFF:
-            return rating
-
-        raise ValueError("Access Denied")
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["lection_id"] = self.kwargs["lection_id"]
+        context["student_id"] = self.kwargs["student_id"]
+        return context
 
 
 class CommentsView(generics.ListAPIView):
@@ -326,7 +307,7 @@ class CommentsView(generics.ListAPIView):
 
         comments = solution.comments
 
-        # idk if this is corrent format
+        # idk if this is correct format
         if user.usertype == User.STUDENT:
             if student_id == user.id:
                 return comments

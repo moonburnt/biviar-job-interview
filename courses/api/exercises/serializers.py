@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from rest_framework import serializers
 from exercises.models import (
     Lection,
@@ -95,18 +96,6 @@ class HomeworkSolutionsSerializer(serializers.ModelSerializer):
             "You must be a student with access to this lection to upload homework"
         )
 
-    # def create(self, validated_data):
-    #     user = self.context["request"].user
-
-    #     if user.usertype == User.LECTOR:
-    #         homework = Homework.objects.get(lection=self.context["lection_id"])
-    #         if not homework:
-    #             raise serializer.ValidationError(
-    #                 "Lection does not exist or does not have any homework set"
-    #             )
-
-    #         if homework.lection.author == user:
-
 
 class CommentsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -154,7 +143,10 @@ class BaseCourseUserOperationSerializer(serializers.Serializer):
             raise serializers.ValidationError("Course not found")
 
         author = self.context["request"].user
-        if not course.co_authors.filter(id=author.id) and course.author != author:
+        if (
+            not course.co_authors.filter(id=author.id).first()
+            and course.author != author
+        ):
             raise serializers.ValidationError(
                 "You must be course's author or lector to do that"
             )
@@ -195,7 +187,7 @@ class AddStudentToCourseSerializer(BaseCourseUserOperationSerializer):
         if user.usertype != User.STUDENT:
             raise serializers.ValidationError("User is not a student")
 
-        if course.students.filter(id=user.id):
+        if course.students.filter(id=user.id).first():
             raise serializers.ValidationError(
                 "Student is already participating in this course"
             )
@@ -210,7 +202,7 @@ class RemoveStudentFromCourseSerializer(BaseCourseUserOperationSerializer):
         if user.usertype != User.STUDENT:
             raise serializers.ValidationError("User is not a student")
 
-        if not course.students.filter(id=user.id):
+        if not course.students.filter(id=user.id).first():
             raise serializers.ValidationError("Student does not belong to this course")
 
 
@@ -222,5 +214,58 @@ class AddLectorToCourseSerializer(BaseCourseUserOperationSerializer):
         if user.usertype != User.LECTOR:
             raise serializers.ValidationError("User is not a lector")
 
-        if course.co_authors.filter(id=user.id) or course.author == user:
+        if course.co_authors.filter(id=user.id).first() or course.author == user:
             raise serializers.ValidationError("Lector already belongs to this course")
+
+
+class RateHomeworkSolutionSerializer(serializers.Serializer):
+    student_id = serializers.IntegerField(read_only=True)
+    lection_id = serializers.IntegerField(read_only=True)
+    rating = serializers.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+
+    def validate_student(self, value):
+        user = User.objects.filter(id=value).first()
+        if not user:
+            raise serializers.ValidationError("Student not found")
+
+        return user
+
+    def validate(self, attrs):
+        lection_id = attrs["lection_id"]
+        student = attrs["student_id"]
+
+        author = self.context["request"].user
+
+        lection = Lection.objects.filter(
+            id=lection_id,
+            author=author,
+        ).first()
+
+        if not lection:
+            raise serializers.ValidationError("You must be lector to do that")
+
+        homework = HomeworkSolution.objects.filter(
+            author__id=student,
+            homework__lection__id=lection_id,
+        ).first()
+
+        if not homework:
+            raise serializers.ValidationError("Homework not found")
+
+        attrs["solution"] = homework
+        return attrs
+
+    def create(self, validated_data):
+        solution = validated_data["solution"]
+        rating = validated_data["rating"]
+
+        solution.rating = rating
+        solution.save()
+
+        return {
+            "lection_id": validated_data["lection_id"],
+            "student_id": validated_data["student_id"],
+            "rating": validated_data["rating"],
+        }

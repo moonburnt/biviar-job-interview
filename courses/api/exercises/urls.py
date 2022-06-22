@@ -30,17 +30,15 @@ urlpatterns = (
         "courses/<int:course_id>/lections/<int:lection_id>/homework/<int:student_id>",
         views.HomeworkSolutionView.as_view(),
     ),
-    # TODO: ability to set/update rating by lector
     path(
-        "courses/<int:course_id>/lections/<int:lection_id>/homework/<int:student_id>/rating",
-        views.SolutionRatingView.as_view(),
+        "courses/<int:course_id>/lections/<int:lection_id>/homework/<int:student_id>/rate",
+        views.RateHomeworkSolutionView.as_view(),
     ),
     path(
         "courses/<int:course_id>/lections/<int:lection_id>/homework/<int:student_id>/comments",
         views.CommentsView.as_view(),
     ),
     # lector-only
-    # TODO: ability to add and remove students by lectors or author
     path("courses/<int:course_id>/students", views.CourseStudentsView.as_view()),
     path(
         "courses/<int:course_id>/<int:lection_id>/homework/solutions",
