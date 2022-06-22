@@ -73,13 +73,14 @@ class CourseLectionsView(generics.ListCreateAPIView):
         else:
             raise ValueError("Invalid user type")
 
+    # Injecting serializer with data obtained from url
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["course_id"] = self.kwargs["course_id"]
         return context
 
 
-class CourseStudentsView(generics.ListCreateAPIView):
+class CourseStudentsView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -87,14 +88,13 @@ class CourseStudentsView(generics.ListCreateAPIView):
         course_id = self.kwargs["course_id"]
         user = self.request.user
 
-        course = Course.objects.filter(course_id)
+        course = Course.objects.get(id=course_id)
 
         students = course.students.all()
 
         if user.usertype == User.LECTOR:
             # Ensure this lector is from this course
-            lector = course.filter(author=user).union(course.filter(co_authors=user))
-            if lector:
+            if user == course.author or course.co_authors.filter(id=user.id):
                 return students
             else:
                 raise ValueError("Lector not from this course")
@@ -110,7 +110,24 @@ class CourseStudentsView(generics.ListCreateAPIView):
         return context
 
 
-class CourseLectorsView(generics.ListCreateAPIView):
+class BaseCourseUserOperationView(generics.CreateAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["course_id"] = self.kwargs["course_id"]
+        return context
+
+
+class AddStudentToCourseView(BaseCourseUserOperationView):
+    serializer_class = serializers.AddStudentToCourseSerializer
+
+
+class RemoveStudentFromCourseView(BaseCourseUserOperationView):
+    serializer_class = serializers.RemoveStudentFromCourseSerializer
+
+
+class CourseLectorsView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -118,9 +135,12 @@ class CourseLectorsView(generics.ListCreateAPIView):
         course_id = self.kwargs["course_id"]
         user = self.request.user
 
-        course = Course.objects.filter(course_id)
+        # This will raise exception if no user has been found, no checks needed
+        course = Course.objects.get(id=course_id)
 
-        lectors = course.values_list("co_authors", "author")
+        lectors = course.co_authors.all().union(
+            User.objects.filter(id=course.author.id)
+        )
 
         if user.usertype == User.LECTOR:
             # Ensure this lector is from this course
@@ -128,7 +148,7 @@ class CourseLectorsView(generics.ListCreateAPIView):
                 return lectors
 
         elif user.usertype == User.STUDENT:
-            if student in course.filter(students=user):
+            if course.students.filter(id=user.id):
                 return lectors
 
         elif user.usertype == User.STAFF:
@@ -142,6 +162,10 @@ class CourseLectorsView(generics.ListCreateAPIView):
         return context
 
 
+class AddLectorToCourseView(BaseCourseUserOperationView):
+    serializer_class = serializers.AddLectorToCourseSerializer
+
+
 class LectionView(generics.RetrieveAPIView):
     serializer_class = serializers.LectionsSerializer
     permission_classes = (IsAuthenticated,)
@@ -151,8 +175,6 @@ class LectionView(generics.RetrieveAPIView):
         lection_id = self.kwargs["lection_id"]
 
         lection = Lection.objects.get(id=lection_id, course=course_id)
-        if not lection:
-            raise ValueError("Lection not found")
 
         user = self.request.user
 
@@ -163,7 +185,7 @@ class LectionView(generics.RetrieveAPIView):
                 raise ValueError("Lector isn't the author of this course")
 
         elif user.usertype == User.STUDENT:
-            if Course.objects.filter(course_id).get(students=user):
+            if Course.objects.filter(id=course_id).get(students=user):
                 return lection
             else:
                 raise ValueError("Student is not from this course")
@@ -184,8 +206,6 @@ class HomeworkView(generics.CreateAPIView):
         user = self.request.user
 
         homework = Homework.objects.get(lection=lection_id)
-        if not homework:
-            raise ValueError("Homework not found")
 
         if user.usertype == User.LECTOR:
             if user == homework.objects.lection.get("author"):
@@ -199,6 +219,12 @@ class HomeworkView(generics.CreateAPIView):
 
         raise ValueError("Access Denied")
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["course_id"] = self.kwargs["course_id"]
+        context["lection_id"] = self.kwargs["lection_id"]
+        return context
+
 
 class HomeworkSolutionView(generics.CreateAPIView):
     serializer_class = serializers.HomeworkSolutionsSerializer
@@ -210,12 +236,8 @@ class HomeworkSolutionView(generics.CreateAPIView):
         user = self.request.user
 
         homework = Homework.objects.get(lection=lection_id)
-        if not homework:
-            raise ValueError("Homework not found")
 
         solution = homework.homework_solutions.get(author=student_id)
-        if not solution:
-            raise ValueError("Solution not found")
 
         # idk if this is corrent format
         if user.usertype == User.STUDENT:
@@ -231,6 +253,13 @@ class HomeworkSolutionView(generics.CreateAPIView):
 
         raise ValueError("Access Denied")
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # context["course_id"] = self.kwargs["course_id"]
+        context["lection_id"] = self.kwargs["lection_id"]
+        context["student_id"] = self.kwargs["student_id"]
+        return context
+
 
 class HomeworkSolutionsView(generics.ListAPIView):
     serializer_class = serializers.HomeworkSolutionsSerializer
@@ -241,8 +270,6 @@ class HomeworkSolutionsView(generics.ListAPIView):
         user = self.request.user
 
         homework = Homework.objects.get(lection=lection_id)
-        if not homework:
-            raise ValueError("Homework not found")
 
         solutions = HomeworkSolution.objects.filter(homework=homework)
 
@@ -265,12 +292,8 @@ class SolutionRatingView(generics.CreateAPIView):
         user = self.request.user
 
         homework = Homework.objects.get(lection=lection_id)
-        if not homework:
-            raise ValueError("Homework not found")
 
         solution = homework.homework_solutions.get(author=student_id)
-        if not solution:
-            raise ValueError("Solution not found")
 
         rating = solution.rating
 
@@ -299,12 +322,7 @@ class CommentsView(generics.ListAPIView):
         user = self.request.user
 
         homework = Homework.objects.get(lection=lection_id)
-        if not homework:
-            raise ValueError("Homework not found")
-
         solution = homework.homework_solutions.get(author=student_id)
-        if not solution:
-            raise ValueError("Solution not found")
 
         comments = solution.comments
 
@@ -321,3 +339,9 @@ class CommentsView(generics.ListAPIView):
             return comments
 
         raise ValueError("Access Denied")
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["lection_id"] = self.kwargs["lection_id"]
+        context["student_id"] = self.kwargs["student_id"]
+        return context

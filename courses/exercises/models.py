@@ -25,6 +25,7 @@ class HomeworkSolution(models.Model):
         # Will need adjustments if this is planned to be used in location with
         # rating systems other than 1-5
         validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
     )
 
 

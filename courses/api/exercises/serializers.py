@@ -54,36 +54,173 @@ class HomeworksSerializer(serializers.ModelSerializer):
     class Meta:
         model = Homework
         fields = "__all__"
+        # I think?
+        read_only_fields = ("lection",)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+
+        if user.usertype == user.LECTOR:
+            if user == homework.objects.lection.get("author"):
+                attrs["lection"] = self.context["lection_id"]
+
+                return attrs
+
+        raise serializers.ValidationError(
+            "You must be this course's lector to set lection's homework"
+        )
 
 
 class HomeworkSolutionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomeworkSolution
         fields = "__all__"
+        read_only_fields = ("author", "homework")
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+
+        if user.usertype == User.STUDENT and user == self.context["student_id"]:
+            homework = Homework.objects.get(lection=self.context["lection_id"])
+            if not homework:
+                raise serializer.ValidationError(
+                    "Lection does not exist or does not have any homework set"
+                )
+
+            attrs["homework"] = homework
+            attrs["author"] = user
+            return attrs
+
+        raise serializers.ValidationError(
+            "You must be a student with access to this lection to upload homework"
+        )
+
+    # def create(self, validated_data):
+    #     user = self.context["request"].user
+
+    #     if user.usertype == User.LECTOR:
+    #         homework = Homework.objects.get(lection=self.context["lection_id"])
+    #         if not homework:
+    #             raise serializer.ValidationError(
+    #                 "Lection does not exist or does not have any homework set"
+    #             )
+
+    #         if homework.lection.author == user:
 
 
 class CommentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = "__all__"
+        read_only_fields = ("author", "homework")
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+
+        homework = Homework.objects.get(lection=self.context["lection_id"])
+        if not homework:
+            raise serializer.ValidationError(
+                "Lection does not exist or does not have any homework set"
+            )
+
+        if (user.usertype == User.STUDENT and user == self.context["student_id"]) or (
+            user.usertype == User.LECTOR and user == homework.lection.author
+        ):
+            attrs["author"] = user
+            attrs["homework"] = homework
+
+            return attrs
+
+        raise serializers.ValidationError(
+            "You must be the author of this homework or lector to add comments"
+        )
 
 
-# class HomeworkCreation(serializers.ModelSerializer):
-#     class Meta:
-#         model = Homework
-#         fields = "__all__"
+class BaseCourseUserOperationSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    course_id = serializers.IntegerField(read_only=True)
 
-#     # We can validate specific fields, naming for that is validate_{fieldname}
-#     def validate_lection(self, value):
-#         lection = Lection.objects.get(id=value)
-#         if not lection.exists():
-#             raise serializers.ValidationError("Lection with this id does not exist")
+    def validate_user_id(self, value):
+        user = User.objects.filter(id=value).first()
+        if not user:
+            raise serializers.ValidationError("User not found")
 
-#         request = self.context["request"]
-#         if lection.author != request.user:
-#             raise serializers.ValidationError(
-#                 "User must be set to lection's lector, to change lection's homework"
-#             )
+        return user
 
-#         # I think thats about it?
-#         return value
+    def validate(self, attrs):
+        course_id = self.context["course_id"]
+        course = Course.objects.filter(id=course_id).first()
+        if not course:
+            raise serializers.ValidationError("Course not found")
+
+        author = self.context["request"].user
+        if not course.co_authors.filter(id=author.id) and course.author != author:
+            raise serializers.ValidationError(
+                "You must be course's author or lector to do that"
+            )
+
+        self._check(course, attrs["user_id"])
+
+        attrs["course"] = course
+
+        return attrs
+
+    # We need create coz its not a model serializer
+    def create(self, validated_data):
+        user = validated_data["user_id"]
+        course = validated_data["course"]
+
+        # course.students.add(user)
+        self._action(course, user)
+        return {
+            "user_id": user.id,
+            "course_id": course.id,
+        }
+
+    def _action(self, course, user):
+        pass
+
+    def _check(self, course, user):
+        pass
+
+    def _check_permissions(self, author, course):
+        pass
+
+
+class AddStudentToCourseSerializer(BaseCourseUserOperationSerializer):
+    def _action(self, course, user):
+        course.students.add(user)
+
+    def _check(self, course, user):
+        if user.usertype != User.STUDENT:
+            raise serializers.ValidationError("User is not a student")
+
+        if course.students.filter(id=user.id):
+            raise serializers.ValidationError(
+                "Student is already participating in this course"
+            )
+
+
+# Post request
+class RemoveStudentFromCourseSerializer(BaseCourseUserOperationSerializer):
+    def _action(self, course, user):
+        course.students.remove(user)
+
+    def _check(self, course, user):
+        if user.usertype != User.STUDENT:
+            raise serializers.ValidationError("User is not a student")
+
+        if not course.students.filter(id=user.id):
+            raise serializers.ValidationError("Student does not belong to this course")
+
+
+class AddLectorToCourseSerializer(BaseCourseUserOperationSerializer):
+    def _action(self, course, user):
+        course.co_authors.add(user)
+
+    def _check(self, course, user):
+        if user.usertype != User.LECTOR:
+            raise serializers.ValidationError("User is not a lector")
+
+        if course.co_authors.filter(id=user.id) or course.author == user:
+            raise serializers.ValidationError("Lector already belongs to this course")
