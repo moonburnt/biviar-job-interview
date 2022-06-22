@@ -68,22 +68,22 @@ class CommentsSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class HomeworkCreation(serializers.ModelSerializer):
-    class Meta:
-        model = Homework
-        fields = "__all__"
+# class HomeworkCreation(serializers.ModelSerializer):
+#     class Meta:
+#         model = Homework
+#         fields = "__all__"
 
-    # We can validate specific fields, naming for that is validate_{fieldname}
-    def validate_lection(self, value):
-        lection = Lection.objects.get(id=value)
-        if not lection.exists():
-            raise serializers.ValidationError("Lection with this id does not exist")
+#     # We can validate specific fields, naming for that is validate_{fieldname}
+#     def validate_lection(self, value):
+#         lection = Lection.objects.get(id=value)
+#         if not lection.exists():
+#             raise serializers.ValidationError("Lection with this id does not exist")
 
-        request = self.context["request"]
-        if lection.author != request.user:
-            raise serializers.ValidationError(
-                "User must be set to lection's lector, to change lection's homework"
-            )
+#         request = self.context["request"]
+#         if lection.author != request.user:
+#             raise serializers.ValidationError(
+#                 "User must be set to lection's lector, to change lection's homework"
+#             )
 
-        # I think thats about it?
-        return value
+#         # I think thats about it?
+#         return value
