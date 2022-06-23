@@ -1,7 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from accounts.models import User
-from exercises.models import Course, Lection, Homework, HomeworkSolution
+from exercises.models import Course, Lection, Homework, HomeworkSolution, Comment
 from . import serializers
 
 from api.accounts.serializers import UserSerializer
@@ -350,18 +350,29 @@ class CommentsView(generics.ListAPIView):
         student_id = self.kwargs["student_id"]
         user = self.request.user
 
-        homework = Homework.objects.get(lection=lection_id)
-        solution = homework.homework_solutions.get(author=student_id)
+        homework = Homework.objects.filter(lection=lection_id).first()
+        if not homework:
+            raise ValueError("Homework not found")
 
-        comments = solution.comments
+        solution = HomeworkSolution.objects.filter(
+            author__id=student_id,
+            homework=homework,
+        ).first()
+
+        if not solution:
+            raise ValueError("Homework solution not found")
+
+        comments = Comment.objects.filter(
+            homework=homework,
+        ).all()
 
         # idk if this is correct format
         if user.usertype == User.STUDENT:
-            if student_id == user.id:
+            if user.id == student_id:
                 return comments
 
         elif user.usertype == User.LECTOR:
-            if user == homework.lection.get("author"):
+            if user == homework.lection.author:
                 return comments
 
         elif user.usertype == User.STAFF:
