@@ -212,8 +212,10 @@ class HomeworkView(generics.RetrieveAPIView):
     serializer_class = serializers.HomeworksSerializer
     permission_classes = (IsAuthenticated,)
 
+    lookup_url_kwarg = "lection_id"
+
     def get_queryset(self):
-        # course_id = self.kwargs["course_id"]
+        course_id = self.kwargs["course_id"]
         lection_id = self.kwargs["lection_id"]
         user = self.request.user
 
@@ -221,12 +223,14 @@ class HomeworkView(generics.RetrieveAPIView):
         if not homework:
             raise ValueError("Homework has not been set")
 
+        if homework.lection.course.id != course_id:
+            raise ValueError("Course does not have such lection")
+
         if user.usertype == User.LECTOR:
-            if user == homework.objects.lection.get("author"):
+            if user == homework.lection.author:
                 return homework
         elif user.usertype == User.STUDENT:
-            # This probably has incorrect format
-            if homework.objects.lection.filter(course__students=user):
+            if Course.objects.filter(id=course_id, students=user).first():
                 return homework
         elif user.usertype == User.STAFF:
             return homework
@@ -260,16 +264,23 @@ class HomeworkSolutionView(generics.RetrieveAPIView):
         student_id = self.kwargs["student_id"]
         user = self.request.user
 
-        homework = Homework.objects.get(lection=lection_id)
+        homework = Homework.objects.filter(lection=lection_id).first()
+        if not homework:
+            raise ValueError("Lection does not have a homework")
 
-        solution = homework.homework_solutions.get(author=student_id)
+        solution = HomeworkSolution.objects.filter(
+            author=student_id,
+            homework=homework,
+        )
+        if not solution:
+            raise ValueError("Solution not found")
 
         if user.usertype == User.STUDENT:
             if student_id == user.id:
                 return solution
 
         elif user.usertype == User.LECTOR:
-            if user == homework.lection.get("author"):
+            if user == homework.lection.author:
                 return solution
 
         elif user.usertype == User.STAFF:
@@ -304,12 +315,14 @@ class HomeworkSolutionsView(generics.ListAPIView):
         lection_id = self.kwargs["lection_id"]
         user = self.request.user
 
-        homework = Homework.objects.get(lection=lection_id)
+        homework = Homework.objects.filter(lection=lection_id).first()
+        if not homework:
+            raise ValueError("Homework not found")
 
-        solutions = HomeworkSolution.objects.filter(homework=homework)
+        solutions = HomeworkSolution.objects.filter(homework=homework).all()
 
         if user.usertype == User.LECTOR:
-            if user == homework.objects.lection.get("author"):
+            if user == homework.lection.author:
                 return solutions
         elif user.usertype == User.STAFF:
             return solutions
