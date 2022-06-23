@@ -239,8 +239,8 @@ class RateHomeworkSolutionSerializer(serializers.Serializer):
         return user
 
     def validate(self, attrs):
-        lection_id = attrs["lection_id"]
-        student = attrs["student_id"]
+        lection_id = self.context["lection_id"]
+        student = self.context["student_id"]
 
         author = self.context["request"].user
 
@@ -271,8 +271,8 @@ class RateHomeworkSolutionSerializer(serializers.Serializer):
         solution.save()
 
         return {
-            "lection_id": validated_data["lection_id"],
-            "student_id": validated_data["student_id"],
+            "lection_id": self.context["lection_id"],
+            "student_id": self.context["student_id"],
             "rating": validated_data["rating"],
         }
 

@@ -180,9 +180,7 @@ class LectionView(generics.RetrieveAPIView):
     serializer_class = serializers.LectionsSerializer
     permission_classes = (IsAuthenticated,)
 
-    lookup_url_kwarg = "lection_id"
-
-    def get_queryset(self):
+    def get_object(self):
         course_id = self.kwargs["course_id"]
         lection_id = self.kwargs["lection_id"]
 
@@ -212,9 +210,7 @@ class HomeworkView(generics.RetrieveAPIView):
     serializer_class = serializers.HomeworksSerializer
     permission_classes = (IsAuthenticated,)
 
-    lookup_url_kwarg = "lection_id"
-
-    def get_queryset(self):
+    def get_object(self):
         course_id = self.kwargs["course_id"]
         lection_id = self.kwargs["lection_id"]
         user = self.request.user
@@ -259,7 +255,7 @@ class HomeworkSolutionView(generics.RetrieveAPIView):
     serializer_class = serializers.HomeworkSolutionsSerializer
     permission_classes = (IsAuthenticated,)
 
-    def get_queryset(self):
+    def get_object(self):
         lection_id = self.kwargs["lection_id"]
         student_id = self.kwargs["student_id"]
         user = self.request.user
@@ -271,7 +267,7 @@ class HomeworkSolutionView(generics.RetrieveAPIView):
         solution = HomeworkSolution.objects.filter(
             author=student_id,
             homework=homework,
-        )
+        ).first()
         if not solution:
             raise ValueError("Solution not found")
 
@@ -341,7 +337,7 @@ class RateHomeworkSolutionView(generics.CreateAPIView):
         return context
 
 
-class CommentsView(generics.ListAPIView):
+class CommentsView(generics.ListCreateAPIView):
     serializer_class = serializers.CommentsSerializer
     permission_classes = (IsAuthenticated,)
 
