@@ -2,6 +2,7 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from accounts.models import User
 from exercises.models import Course, Lection, Homework, HomeworkSolution, Comment
+from django.http import Http404
 from . import serializers
 
 from api.accounts.serializers import UserSerializer
@@ -76,7 +77,12 @@ class CourseLectionsView(generics.ListAPIView):
     # Injecting serializer with data obtained from url
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["course_id"] = self.kwargs["course_id"]
+
+        course_id = self.kwargs.get("course_id")
+        if not course_id:
+            raise Http404
+
+        context["course_id"] = course_id
         return context
 
 
@@ -106,7 +112,11 @@ class CourseStudentsView(generics.ListAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["course_id"] = self.kwargs["course_id"]
+        course_id = self.kwargs.get("course_id")
+        if not course_id:
+            raise Http404
+
+        context["course_id"] = course_id
         return context
 
 
@@ -115,7 +125,12 @@ class BaseCourseUserOperationView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["course_id"] = self.kwargs["course_id"]
+
+        course_id = self.kwargs.get("course_id")
+        if not course_id:
+            raise Http404
+
+        context["course_id"] = course_id
         return context
 
 
@@ -158,7 +173,11 @@ class CourseLectorsView(generics.ListAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["course_id"] = self.kwargs["course_id"]
+        course_id = self.kwargs.get("course_id")
+        if not course_id:
+            raise Http404
+
+        context["course_id"] = course_id
         return context
 
 
@@ -172,7 +191,11 @@ class AddLectionView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["course_id"] = self.kwargs["course_id"]
+        course_id = self.kwargs.get("course_id")
+        if not course_id:
+            raise Http404
+
+        context["course_id"] = course_id
         return context
 
 
@@ -235,8 +258,18 @@ class HomeworkView(generics.RetrieveAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["course_id"] = self.kwargs["course_id"]
-        context["lection_id"] = self.kwargs["lection_id"]
+
+        course_id = self.kwargs.get("course_id")
+        if not course_id:
+            raise Http404
+
+        context["course_id"] = course_id
+
+        lection_id = self.kwargs.get("lection_id")
+        if not lection_id:
+            raise Http404
+        context["lection_id"] = lection_id
+
         return context
 
 
@@ -246,8 +279,10 @@ class AddHomeworkView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        # context["course_id"] = self.kwargs["course_id"]
-        context["lection_id"] = self.kwargs["lection_id"]
+        lection_id = self.kwargs.get("lection_id")
+        if not lection_id:
+            raise Http404
+        context["lection_id"] = lection_id
         return context
 
 
@@ -286,9 +321,15 @@ class HomeworkSolutionView(generics.RetrieveAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        # context["course_id"] = self.kwargs["course_id"]
-        context["lection_id"] = self.kwargs["lection_id"]
-        context["student_id"] = self.kwargs["student_id"]
+        lection_id = self.kwargs.get("lection_id")
+        if not lection_id:
+            raise Http404
+        context["lection_id"] = lection_id
+
+        student_id = self.kwargs.get("student_id")
+        if not student_id:
+            raise Http404
+        context["student_id"] = student_id
         return context
 
 
@@ -298,8 +339,10 @@ class AddHomeworkSolutionView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        # context["course_id"] = self.kwargs["course_id"]
-        context["lection_id"] = self.kwargs["lection_id"]
+        lection_id = self.kwargs.get("lection_id")
+        if not lection_id:
+            raise Http404
+        context["lection_id"] = lection_id
         return context
 
 
@@ -332,8 +375,15 @@ class RateHomeworkSolutionView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["lection_id"] = self.kwargs["lection_id"]
-        context["student_id"] = self.kwargs["student_id"]
+        lection_id = self.kwargs.get("lection_id")
+        if not lection_id:
+            raise Http404
+        context["lection_id"] = lection_id
+
+        student_id = self.kwargs.get("student_id")
+        if not student_id:
+            raise Http404
+        context["student_id"] = student_id
         return context
 
 
@@ -378,6 +428,13 @@ class CommentsView(generics.ListCreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["lection_id"] = self.kwargs["lection_id"]
-        context["student_id"] = self.kwargs["student_id"]
+        lection_id = self.kwargs.get("lection_id")
+        if not lection_id:
+            raise Http404
+        context["lection_id"] = lection_id
+
+        student_id = self.kwargs.get("student_id")
+        if not student_id:
+            raise Http404
+        context["student_id"] = student_id
         return context
