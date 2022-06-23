@@ -41,7 +41,7 @@ urlpatterns = (
     # lector-only
     path(
         "courses/<int:course_id>/lections/add_lection",
-        views.CourseLectionsView.as_view(),
+        views.AddLectionView.as_view(),
     ),
     path("courses/<int:course_id>/students", views.CourseStudentsView.as_view()),
     path(

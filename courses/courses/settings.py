@@ -85,3 +85,5 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Using custom user model coz default does not have required fields
 AUTH_USER_MODEL = "accounts.User"
+MEDIA_ROOT = "media"
+MEDIA_URL = "/media/"

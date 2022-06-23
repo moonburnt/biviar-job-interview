@@ -294,7 +294,7 @@ class AddLectionSerializer(serializers.ModelSerializer):
         attrs["course"] = course
 
         if user.usertype == user.LECTOR:
-            if user == course.autor or course.co_authors.filter(id=user.id):
+            if user == course.author or course.co_authors.filter(id=user.id):
                 attrs["author"] = user
 
                 return attrs

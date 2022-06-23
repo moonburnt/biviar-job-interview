@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from uuid import uuid4
+from os.path import join
 
 
 class HomeworkSolution(models.Model):
@@ -62,9 +64,18 @@ class Lection(models.Model):
         related_name="lections",
     )
 
-    # TODO:
-    # - store presentation's pdfs somewhere
-    # - add field with path to attached pdf
+    def _upload(self, filename):
+        # Protection against file overwrites
+        filename = join("lections", f"{uuid4()}_{filename}")
+
+        return filename
+
+    # Not checking for file format right now
+    pdf = models.FileField(
+        null=True,
+        # upload_to="lections",
+        upload_to=_upload,
+    )
 
     # one lection may only have one course, for now
     course = models.ForeignKey(
