@@ -39,9 +39,22 @@ urlpatterns = (
         views.CommentsView.as_view(),
     ),
     # lector-only
+    path(
+        "courses/<int:course_id>/lections/add_lection",
+        views.CourseLectionsView.as_view(),
+    ),
     path("courses/<int:course_id>/students", views.CourseStudentsView.as_view()),
     path(
-        "courses/<int:course_id>/<int:lection_id>/homework/solutions",
+        "courses/<int:course_id>/lections/<int:lection_id>/add_homework",
+        views.AddHomeworkView.as_view(),
+    ),
+    path(
+        "courses/<int:course_id>/lections/<int:lection_id>/homework/solutions",
         views.HomeworkSolutionsView.as_view(),
+    ),
+    # student-only
+    path(
+        "courses/<int:course_id>/lections/<int:lection_id>/homework/add_solution",
+        views.AddHomeworkSolutionView.as_view(),
     ),
 )

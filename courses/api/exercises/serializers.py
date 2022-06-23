@@ -36,34 +36,34 @@ class LectionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lection
         fields = "__all__"
-        read_only_fields = ("author", "course")
-
-    def validate(self, attrs):
-        user = self.context["request"].user
-
-        if user.usertype != User.LECTOR:
-            raise serializers.ValidationError(
-                "You must be a lector to create a lection"
-            )
-
-        attrs["author"] = user
-        attrs["course_id"] = self.context["course_id"]
-        return attrs
 
 
 class HomeworksSerializer(serializers.ModelSerializer):
     class Meta:
         model = Homework
         fields = "__all__"
-        # I think?
+
+
+class AddHomeworkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Homework
+        fields = "__all__"
         read_only_fields = ("lection",)
 
     def validate(self, attrs):
         user = self.context["request"].user
 
+        lection_id = self.context["lection_id"]
+        lection = Lection.objects.filter(id=lection_id).first()
+        if not lection:
+            raise serializer.ValidationError("Lection not found")
+
+        if Homework.objects.filter(lection=lection).first():
+            raise serializer.ValidationError("Homework already has been set")
+
         if user.usertype == user.LECTOR:
-            if user == homework.objects.lection.get("author"):
-                attrs["lection"] = self.context["lection_id"]
+            if user == lection.author:
+                attrs["lection"] = lection
 
                 return attrs
 
@@ -76,12 +76,18 @@ class HomeworkSolutionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomeworkSolution
         fields = "__all__"
-        read_only_fields = ("author", "homework")
+
+
+class AddHomeworkSolutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HomeworkSolution
+        fields = "__all__"
+        read_only_fields = ("author", "homework", "rating")
 
     def validate(self, attrs):
         user = self.context["request"].user
 
-        if user.usertype == User.STUDENT and user == self.context["student_id"]:
+        if user.usertype == User.STUDENT:
             homework = Homework.objects.get(lection=self.context["lection_id"])
             if not homework:
                 raise serializer.ValidationError(
@@ -269,3 +275,30 @@ class RateHomeworkSolutionSerializer(serializers.Serializer):
             "student_id": validated_data["student_id"],
             "rating": validated_data["rating"],
         }
+
+
+class AddLectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lection
+        fields = "__all__"
+        read_only_fields = ("author", "course")
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        course_id = self.context["course_id"]
+
+        course = Course.objects.filter(id=course_id).first()
+        if not course:
+            raise serializers.ValidationError("Course not found")
+
+        attrs["course"] = course
+
+        if user.usertype == user.LECTOR:
+            if user == course.autor or course.co_authors.filter(id=user.id):
+                attrs["author"] = user
+
+                return attrs
+
+        raise serializers.ValidationError(
+            "You must be this course's lector to add lections"
+        )

@@ -1,7 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from accounts.models import User
-from exercises.models import Course, Lection, Homework
+from exercises.models import Course, Lection, Homework, HomeworkSolution
 from . import serializers
 
 from api.accounts.serializers import UserSerializer
@@ -46,7 +46,7 @@ class CourseView(generics.RetrieveAPIView):
     lookup_url_kwarg = "course_id"
 
 
-class CourseLectionsView(generics.ListCreateAPIView):
+class CourseLectionsView(generics.ListAPIView):
     serializer_class = serializers.LectionsSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -166,15 +166,27 @@ class AddLectorToCourseView(BaseCourseUserOperationView):
     serializer_class = serializers.AddLectorToCourseSerializer
 
 
+class AddLectionView(generics.CreateAPIView):
+    serializer_class = serializers.AddLectionSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["course_id"] = self.kwargs["course_id"]
+        return context
+
+
 class LectionView(generics.RetrieveAPIView):
     serializer_class = serializers.LectionsSerializer
     permission_classes = (IsAuthenticated,)
+
+    lookup_url_kwarg = "lection_id"
 
     def get_queryset(self):
         course_id = self.kwargs["course_id"]
         lection_id = self.kwargs["lection_id"]
 
-        lection = Lection.objects.get(id=lection_id, course=course_id)
+        lection = Lection.objects.get(id=lection_id, course__id=course_id)
 
         user = self.request.user
 
@@ -196,7 +208,7 @@ class LectionView(generics.RetrieveAPIView):
         raise ValueError("Only people from this course can access lection info")
 
 
-class HomeworkView(generics.CreateAPIView):
+class HomeworkView(generics.RetrieveAPIView):
     serializer_class = serializers.HomeworksSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -205,14 +217,16 @@ class HomeworkView(generics.CreateAPIView):
         lection_id = self.kwargs["lection_id"]
         user = self.request.user
 
-        homework = Homework.objects.get(lection=lection_id)
+        homework = Homework.objects.filter(lection=lection_id).first()
+        if not homework:
+            raise ValueError("Homework has not been set")
 
         if user.usertype == User.LECTOR:
             if user == homework.objects.lection.get("author"):
                 return homework
         elif user.usertype == User.STUDENT:
             # This probably has incorrect format
-            if homework.objects.lection.course.filter(students=user):
+            if homework.objects.lection.filter(course__students=user):
                 return homework
         elif user.usertype == User.STAFF:
             return homework
@@ -226,7 +240,18 @@ class HomeworkView(generics.CreateAPIView):
         return context
 
 
-class HomeworkSolutionView(generics.CreateAPIView):
+class AddHomeworkView(generics.CreateAPIView):
+    serializer_class = serializers.AddHomeworkSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # context["course_id"] = self.kwargs["course_id"]
+        context["lection_id"] = self.kwargs["lection_id"]
+        return context
+
+
+class HomeworkSolutionView(generics.RetrieveAPIView):
     serializer_class = serializers.HomeworkSolutionsSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -239,7 +264,6 @@ class HomeworkSolutionView(generics.CreateAPIView):
 
         solution = homework.homework_solutions.get(author=student_id)
 
-        # idk if this is corrent format
         if user.usertype == User.STUDENT:
             if student_id == user.id:
                 return solution
@@ -258,6 +282,17 @@ class HomeworkSolutionView(generics.CreateAPIView):
         # context["course_id"] = self.kwargs["course_id"]
         context["lection_id"] = self.kwargs["lection_id"]
         context["student_id"] = self.kwargs["student_id"]
+        return context
+
+
+class AddHomeworkSolutionView(generics.CreateAPIView):
+    serializer_class = serializers.AddHomeworkSolutionSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # context["course_id"] = self.kwargs["course_id"]
+        context["lection_id"] = self.kwargs["lection_id"]
         return context
 
 
