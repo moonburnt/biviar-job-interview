@@ -2,7 +2,7 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from accounts.models import User
 from exercises.models import Course, Lection, Homework, HomeworkSolution, Comment
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from . import serializers
 
 from api.accounts.serializers import UserSerializer
@@ -37,7 +37,7 @@ class MyCoursesView(generics.ListAPIView):
 
         else:
             # This should not happen, doing as a safety measure
-            raise ValueError(f"Invalid usertype: {user.usertype}")
+            raise HttpResponseBadRequest(f"Invalid usertype: {user.usertype}")
 
 
 class CourseView(generics.RetrieveAPIView):
@@ -72,7 +72,7 @@ class CourseLectionsView(generics.ListAPIView):
             return lections
 
         else:
-            raise ValueError("Invalid user type")
+            raise HttpResponseBadRequest("Invalid user type")
 
     # Injecting serializer with data obtained from url
     def get_serializer_context(self):
@@ -103,12 +103,14 @@ class CourseStudentsView(generics.ListAPIView):
             if user == course.author or course.co_authors.filter(id=user.id):
                 return students
             else:
-                raise ValueError("Lector not from this course")
+                raise HttpResponseBadRequest("Lector not from this course")
 
         elif user.usertype == User.STAFF:
             return students
 
-        raise ValueError("Only lectors from this course can access students list")
+        raise HttpResponseBadRequest(
+            "Only lectors from this course can access students list"
+        )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -169,7 +171,9 @@ class CourseLectorsView(generics.ListAPIView):
         elif user.usertype == User.STAFF:
             return lectors
 
-        raise ValueError("Only people who belong to this course can access its lectors")
+        raise HttpResponseBadRequest(
+            "Only people who belong to this course can access its lectors"
+        )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -215,18 +219,20 @@ class LectionView(generics.RetrieveAPIView):
             if lection.author == user:
                 return lection
             else:
-                raise ValueError("Lector isn't the author of this course")
+                raise HttpResponseBadRequest("Lector isn't the author of this course")
 
         elif user.usertype == User.STUDENT:
             if Course.objects.filter(id=course_id).get(students=user):
                 return lection
             else:
-                raise ValueError("Student is not from this course")
+                raise HttpResponseBadRequest("Student is not from this course")
 
         elif user.usertype == User.STAFF:
             return lection
 
-        raise ValueError("Only people from this course can access lection info")
+        raise HttpResponseBadRequest(
+            "Only people from this course can access lection info"
+        )
 
 
 class HomeworkView(generics.RetrieveAPIView):
@@ -240,10 +246,10 @@ class HomeworkView(generics.RetrieveAPIView):
 
         homework = Homework.objects.filter(lection=lection_id).first()
         if not homework:
-            raise ValueError("Homework has not been set")
+            raise HttpResponseBadRequest("Homework has not been set")
 
         if homework.lection.course.id != course_id:
-            raise ValueError("Course does not have such lection")
+            raise HttpResponseBadRequest("Course does not have such lection")
 
         if user.usertype == User.LECTOR:
             if user == homework.lection.author:
@@ -254,7 +260,7 @@ class HomeworkView(generics.RetrieveAPIView):
         elif user.usertype == User.STAFF:
             return homework
 
-        raise ValueError("Access Denied")
+        raise HttpResponseBadRequest("Access Denied")
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -297,14 +303,14 @@ class HomeworkSolutionView(generics.RetrieveAPIView):
 
         homework = Homework.objects.filter(lection=lection_id).first()
         if not homework:
-            raise ValueError("Lection does not have a homework")
+            raise HttpResponseBadRequest("Lection does not have a homework")
 
         solution = HomeworkSolution.objects.filter(
             author=student_id,
             homework=homework,
         ).first()
         if not solution:
-            raise ValueError("Solution not found")
+            raise HttpResponseBadRequest("Solution not found")
 
         if user.usertype == User.STUDENT:
             if student_id == user.id:
@@ -317,7 +323,7 @@ class HomeworkSolutionView(generics.RetrieveAPIView):
         elif user.usertype == User.STAFF:
             return solution
 
-        raise ValueError("Access Denied")
+        raise HttpResponseBadRequest("Access Denied")
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -356,7 +362,7 @@ class HomeworkSolutionsView(generics.ListAPIView):
 
         homework = Homework.objects.filter(lection=lection_id).first()
         if not homework:
-            raise ValueError("Homework not found")
+            raise HttpResponseBadRequest("Homework not found")
 
         solutions = HomeworkSolution.objects.filter(homework=homework).all()
 
@@ -366,7 +372,7 @@ class HomeworkSolutionsView(generics.ListAPIView):
         elif user.usertype == User.STAFF:
             return solutions
 
-        raise ValueError("Access Denied")
+        raise HttpResponseBadRequest("Access Denied")
 
 
 class RateHomeworkSolutionView(generics.CreateAPIView):
@@ -398,7 +404,7 @@ class CommentsView(generics.ListCreateAPIView):
 
         homework = Homework.objects.filter(lection=lection_id).first()
         if not homework:
-            raise ValueError("Homework not found")
+            raise HttpResponseBadRequest("Homework not found")
 
         solution = HomeworkSolution.objects.filter(
             author__id=student_id,
@@ -406,7 +412,7 @@ class CommentsView(generics.ListCreateAPIView):
         ).first()
 
         if not solution:
-            raise ValueError("Homework solution not found")
+            raise HttpResponseBadRequest("Homework solution not found")
 
         comments = Comment.objects.filter(
             homework=homework,
@@ -424,7 +430,7 @@ class CommentsView(generics.ListCreateAPIView):
         elif user.usertype == User.STAFF:
             return comments
 
-        raise ValueError("Access Denied")
+        raise HttpResponseBadRequest("Access Denied")
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
